@@ -1,1 +1,127 @@
-var h=Object.defineProperty;var p=Object.getOwnPropertyDescriptor;var m=Object.getOwnPropertyNames;var f=Object.prototype.hasOwnProperty;var b=(o,e)=>{for(var u in e)h(o,u,{get:e[u],enumerable:!0})},I=(o,e,u,g)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of m(e))!f.call(o,n)&&n!==u&&h(o,n,{get:()=>e[n],enumerable:!(g=p(e,n))||g.enumerable});return o};var U=o=>I(h({},"__esModule",{value:!0}),o);var _={};b(_,{default:()=>d});module.exports=U(_);var c=require("enmity/api/plugins"),s=require("enmity/metro"),l=require("enmity/metro/stores"),d=class extends c.Plugin{settings={targetId:""};patchIds=[];start(){this.settings=c.Settings.load(this.name)||this.settings,this.patchMessages(),this.patchProfileUI()}stop(){this.patchIds.forEach(e=>s.Patcher.unpatchAll(e))}getTargetUser(){return l.UserStore.getUser(this.settings.targetId)}patchMessages(){let e="LocalImpersonator-Messages";this.patchIds.push(e),s.Patcher.after(e,"Messages","renderMessage",(u,g)=>{let n=u[0].message,a=this.getTargetUser();return n.author.id===l.UserStore.getCurrentUser().id&&a&&(n.author.username=a.username,n.author.global_name=a.global_name||a.username,n.author.avatar=a.avatar),g})}patchProfileUI(){let e="LocalImpersonator-ProfileUI";this.patchIds.push(e);let u=s.Webpack.getModule(a=>a.default&&a.default.displayName==="UserPopout"),g=s.Webpack.getModule(a=>a.default&&a.default.displayName==="SidebarUserItem"),n=s.Webpack.getModule(a=>a.default&&a.default.displayName==="UserProfileModal");s.Patcher.after(e,u,"default",(a,i)=>{let t=this.getTargetUser();if(!t)return i;let r=a[0];return r.user.id===l.UserStore.getCurrentUser().id&&(r.user.username=t.username,r.user.global_name=t.global_name||t.username,r.user.avatar=t.avatar,r.user.banner=t.banner,r.user.accent_color=t.accent_color),i}),s.Patcher.after(e,g,"default",(a,i)=>{let t=this.getTargetUser();if(!t)return i;let r=a[0];return r.user.id===l.UserStore.getCurrentUser().id&&(r.user.username=t.username,r.user.global_name=t.global_name||t.username,r.user.avatar=t.avatar,r.user.banner=t.banner,r.user.accent_color=t.accent_color),i}),s.Patcher.after(e,n,"default",(a,i)=>{let t=this.getTargetUser();if(!t)return i;let r=a[0];return r.user.id===l.UserStore.getCurrentUser().id&&(r.user.username=t.username,r.user.global_name=t.global_name||t.username,r.user.avatar=t.avatar,r.user.banner=t.banner,r.user.accent_color=t.accent_color),i})}onSettingsSave(e){this.settings=e,c.Settings.save(this.name,this.settings)}getSettingsPanel(){return s.React.createElement("div",{},s.React.createElement("input",{type:"text",placeholder:"Target Discord ID",value:this.settings.targetId,onChange:e=>{this.settings.targetId=e.target.value}}))}};
+const {
+    plugin: {
+        store,
+        Plugin,
+        patch,
+        unpatch
+    },
+    // The "api" object provides access to Discord's internal modules and utilities.
+    api: {
+        find,
+        findAndPatch,
+        React,
+        // The store is where Discord's data is kept. You can get a user's data from here.
+        stores: {
+            UserStore
+        }
+    },
+    // We need to import the UI components for our settings page.
+    ui: {
+        components: {
+            TextInput
+        }
+    }
+} = enmity;
+
+// Plugin metadata
+const plugin = new Plugin({
+    name: 'User Avatar Changer',
+    author: 'Your Name',
+    description: 'Changes your profile picture to another user\'s avatar by ID.',
+    version: '1.0.0',
+    id: 'user-avatar-changer'
+});
+
+// A variable to store the original avatar URL so we can restore it later.
+let originalAvatarUrl = null;
+
+// Define the settings for the plugin.
+plugin.settings = {
+    // Set the initial default value for the user ID.
+    setDefaults() {
+        return {
+            targetUserId: ''
+        };
+    },
+    // This is the function that renders the settings page.
+    render() {
+        const { targetUserId } = store;
+        return (
+            // A simple UI component to get a user ID from the user.
+            <TextInput
+                title='Target User ID'
+                placeholder='Enter a Discord user ID'
+                value={targetUserId}
+                onChange={value => {
+                    // Update the setting when the user types.
+                    store.targetUserId = value;
+                }}
+            />
+        );
+    }
+};
+
+plugin.onstart = () => {
+    // Get the target user's ID from the plugin's store.
+    const targetUserId = store.targetUserId;
+    
+    if (!targetUserId) {
+        alert('Please enter a user ID in the plugin settings.');
+        return;
+    }
+    
+    // 1. Get the target user's data from the Discord store.
+    const targetUser = UserStore.getUser(targetUserId);
+    
+    // Check if the user exists.
+    if (!targetUser) {
+        alert('User not found. Please check the ID.');
+        return;
+    }
+
+    // 2. Find the internal Discord module that gets the current user's avatar URL.
+    // This is the most critical part and may require some debugging to find.
+    // The name could be something like 'getSelfAvatarURL', 'getCurrentUserAvatar', etc.
+    // Use the `find` or `findAndPatch` utility with a function signature you can recognize.
+    const avatarModule = find(m => m.default && typeof m.default.getAvatarURL === 'function');
+    
+    // We are looking for a module that has a function to get the avatar URL.
+    if (avatarModule) {
+        // 3. Patch the function to return the target user's avatar URL instead of our own.
+        // We use `patch` to modify the original function's behavior without rewriting it.
+        patch(avatarModule.default, 'getAvatarURL', (_, originalArgs) => {
+            // Get the current user ID to ensure we only patch our own avatar.
+            const currentUserId = originalArgs[0];
+            
+            if (currentUserId === UserStore.getCurrentUser().id) {
+                // Return the target user's avatar URL.
+                return targetUser.getAvatarURL();
+            }
+            
+            // If it's not our own user, let the original function run.
+            return originalArgs;
+        });
+        
+        console.log('User Avatar Changer: Successfully patched avatar URL.');
+    } else {
+        alert('Could not find the avatar module to patch. The plugin may not work.');
+    }
+};
+
+plugin.onstop = () => {
+    // 1. Unpatch the function to restore the original Discord behavior.
+    // It's crucial to clean up to avoid conflicts and issues.
+    unpatchAll(plugin.id);
+    console.log('User Avatar Changer: Plugin stopped and avatar URL patched function restored.');
+};
+
+// A helper function to unpatch all patches made by this plugin.
+function unpatchAll(id) {
+    patch.patches.forEach(p => {
+        if (p.id === id) {
+            p.unpatch();
+        }
+    });
+}
+
+module.exports = plugin;
