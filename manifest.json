@@ -1,12 +1,14 @@
 {
-   "name": "Imposter",
-   "version": "1.1.0",
-   "description": "Become anyone on discord",
-   "authors": [
-      {
-         "name": "eeriemyxi",
-         "id": "598134630104825856"
-      }
-   ],
-   "color": "#000001"
+  "name": "Imposter",
+  "description": "Impersonate another user by spoofing their profile and messages.",
+  "authors": [
+    {
+      "name": "clockwrks",
+      "id": "378986339007201290"
+    }
+  ],
+  "version": "0.0.3",
+  "color": "#ff4757",
+  "source": "src/index.tsx",
+  "dist": "dist/Imposter.js"
 }
