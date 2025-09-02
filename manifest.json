@@ -1,0 +1,8 @@
+{
+  "name": "LocalImpersonator",
+  "author": "clockwrks",
+  "version": "0.0.3",
+  "description": "Spoofs your local profile to appear as another Discord user",
+  "main": "LocalImpersonator.js",
+  "settings": true
+}
